@@ -2,10 +2,10 @@
 
 用 MoonBit 實作並**驗證**的九個數學結構。每一個套件都同時給出
 (a) 定義、(b) 定理、(c) 由定理推出的演算法，以及 (d) 一組真正跑過的機械驗證
-（`moon test`，共 **70 個測試，全綠**）。
+（`moon test`，共 **78 個測試，全綠**）。
 
 ```
-moon test          # 68 passed, 0 failed
+moon test          # 78 passed, 0 failed
 moon run cmd/main  # 十個套件各印出一條由演算法算出來的結論
 ```
 
@@ -222,6 +222,133 @@ $\{\mathbb F_4\to\mathbb F_p\}$ 是平展非 Nisnevich。
 
 ---
 
+## 11. 層 `src/sheaf`（8 測試）
+
+**定義（站）** 站 $\mathcal C$ 的物件是有限點集 $u=\{0,\dots,|u|-1\}$，態射是點映射
+（合成＝映射合成），覆蓋是基底覆蓋族 $\mathrm{Cov}(u)=\{u_\alpha\to u\}$：物件 $u$ 的
+覆蓋取其點的最小鄰域（Nisnevich 站上是各點的嵌入 $\mathrm{Spec}\,\mathbb F_p\to u$，
+有限空間站上是極小開集 $\uparrow\! x$）。本套件跑兩個站：
+
+| 站 | 物件 | 態射 | 說明 |
+|---|---|---|---|
+| `nis_split_site(3)` | $4$ | $60$ | 完全分裂的 Nisnevich 站，物件 $=\mathrm{Spec}\,\mathbb F_p^{\,k}$，$k\le 3$ |
+| `finite_space_site(6, triangle_opens())` | $18$ | $129$ | McCord 的 $S^1$ 有限模型（$3$ 頂點 $+3$ 邊） |
+| `finite_space_site(3, interval_opens())` | $5$ | $17$ | 區間的有限模型（可縮） |
+
+**定義（預層、分離、層）** 預層 $F:\mathcal C^{op}\to\mathbf{Set}$ 由
+$F(u)=$ 有限集合、$\mathrm{res}_a:F(v)\to F(u)$（$a:u\to v$）給出，滿足
+$\mathrm{res}_{\mathrm{id}}=\mathrm{id}$、$\mathrm{res}_{b\circ a}=\mathrm{res}_a\circ\mathrm{res}_b$
+（此即 `psh_ok`，測試逐箭頭驗證）。對覆蓋族 $(u_\alpha\to u)_\alpha$，
+**相容族**是 $(s_\alpha)\in\prod_\alpha F(u_\alpha)$ 使在
+$u_\alpha\times_u u_\beta$ 上 $\mathrm{res}(s_\alpha)=\mathrm{res}(s_\beta)$。
+$F$ **分離**＝每個相容族至多一個黏合；$F$ 是**層**＝恰好一個。
+
+**定義（加構造與層化）** 對覆蓋 $R$ 記 $\mathrm{Match}(R,F)$ 為相容族集合，並以
+$\varinjlim$ 對「加細」取等價（$s\sim t\iff$ 在某個共同加細上逐項相等）：
+
+$$F^+(u)=\varinjlim_{R\in\mathrm{Cov}(u)}\mathrm{Match}(R,F),\qquad F^\#=(F^+)^+ .$$
+
+單位態射 $\eta_F:F\to F^\#$ 把截面送到它的芽的相容族。
+
+**定義（莖）** $F_x=\varinjlim_{x\in V}F(V)$。本站上每個點 $x$ 都有**最小鄰域**
+$V_x$（Nisnevich 站：$\mathrm{Spec}\,\mathbb F_p\hookrightarrow u$；有限空間：$\uparrow\!x$），
+它在鄰域系裡共尾，故莖退化為
+
+$$F_x=F(V_x),\qquad s\mapsto s|_{V_x}.$$
+
+一般（未退化）的餘極限也實作了（`stalk`、`germs_equal`），T5 在可負擔的規模上
+核對兩者一致。
+
+**T1（加構造）** 對所有預層：$F^+$ 必分離，$F^\#=(F^+)^+$ 必為層，且 $\#$ 冪等。
+驗證：$8$ 個預層（常數 $2,3$、局部常數、可表）在兩個站上全部
+`psh_ok`、`is_sheaf(F^#)=true`、`germ_injective(F^#)=true`，且
+$\mathrm{fibers}(F^{\#\#})=\mathrm{fibers}(F^\#)$。
+**兩步是必需的**：Nisnevich 站上 $\underline{2}^+=[1,2,2,2]$ 分離但**不是層**，
+$\underline{2}^{\#}=[1,2,4,8]$ 才是層。
+
+**T2（常數預層的層化）** $(\underline{k})^\#\cong$ 局部常數層
+$u\mapsto k^{\#\pi_0(u)}$。由「常數截面」映射 $\underline k\to k^{\#\pi_0(\bullet)}$
+經泛性質得到同構 $\psi:F^\#\xrightarrow{\sim}k^{\#\pi_0(\bullet)}$，並機械驗證
+$\psi$ 自然且逐物件雙射。纖維大小：
+Nisnevich 站 $[1,2,4,8]=$ 三點上的全體函數；區間站 $[1,2,2,2,2]$
+（區間連通！）——同一個公式在離散站上給全體函數、在拓撲空間上給**連通分支上的**
+常值函數，兩者都由 `components_presheaf` 統一給出。
+
+**T3（單位刻畫層）** $\eta_F:F\to F^\#$ 是同構 $\iff$ $F$ 是層。
+驗證：層（局部常數、可表、分支預層）上 $\eta$ 逐物件雙射；
+非層（常數預層）上不是。另構造一個**不分離**的預層（頂空間有兩個截面，
+在覆蓋的每個成員上限制相等）：`is_separated = false`、`germ_injective = false`，
+而 $\eta$ 把兩個截面**黏成同一個**（$\eta_{\mathrm{top}}(0)=\eta_{\mathrm{top}}(1)$），
+層化後並補回遺漏的局部資料（$F^\\#(\mathrm{top})=4$）。
+
+**T4（伴隨）** 層化左伴隨於含入 $\mathbf{Sh}\hookrightarrow\mathbf{PSh}$：
+
+$$\mathrm{Nat}(F^\#,G)\xrightarrow{\ \sim\ }\mathrm{Nat}(F,G),\qquad \varphi\mapsto\varphi\circ\eta_F,
+\qquad G\ \text{層}.$$
+
+驗證：在 `nis_split_site(2)` 上**枚舉**全部自然變換（$\mathrm{Nat}(\underline2^\#,\mathrm{LC}_2)$
+與 $\mathrm{Nat}(\underline2,\mathrm{LC}_2)$ 各 $4$ 個），逐個核對 $\varphi\mapsto\varphi\circ\eta$
+是雙射；在較大的站上改用構造性泛性質：`sheafify_map` 給出唯一的
+$\alpha^\#$ 使 $\alpha^\#\circ\eta_F=\alpha$。
+
+**T5（莖）** 層化保持莖：$F_x\cong F^\#_x$（沿 $\eta$）。層的態射是同構
+$\iff$ 它在每個莖上是雙射（$\mathrm{Sh}$ 有足夠多點）。驗證：
+$\underline2,\underline3,\mathrm{LC}_2$ 的每個點莖大小在層化前後相同，且
+$\eta$ 的莖映射逐點為雙射；三態射對比——
+數字含入 $\mathrm{LC}_2\to\mathrm{LC}_3$（莖上單非滿）、
+模 $2$ 化約 $\mathrm{LC}_3\to\mathrm{LC}_2$（莖上滿非單）、
+恆等（同構）——`is_iso` 與「所有莖雙射」完全一致。
+
+**T6（左正合）** 層化與有限極限（此處：乘積）交換：
+$$(F\times G)^\#\ \cong\ F^\#\times G^\# .$$
+驗證：把射影經 `sheafify_map` 送到層化上，合成
+$(F\times G)^\#\to F^\#\times G^\#$，驗證它自然且逐物件雙射，且兩邊纖維相同。
+
+**T7（Čech 上同調＝空間的上同調）** 對覆蓋族 $\mathfrak U=(u_\alpha\to u)$，神經
+$N_n\mathfrak U=\{\sigma=(\alpha_0<\dots<\alpha_n):u_\sigma\neq\varnothing\}$，
+上鏈 $C^n=\mathbb Z^{|N_n|}$，$\delta^n$ 為交錯和；$m$ 為質數時
+
+$$b_n=\dim_{\mathbb F_m}H^n=|N_n|-\mathrm{rank}_{\mathbb F_m}\delta^{n-1}-\mathrm{rank}_{\mathbb F_m}\delta^{n},\qquad
+\chi=\sum_n(-1)^n|N_n|=\sum_n(-1)^nb_n .$$
+
+秩由 Smith 標準形給出；整係數同調交給 `@derived.homology`。
+（`cech_cx` 把上鏈複形以 $C_n=C^{\mathrm{top}-n}$ 重新索引為鏈複形，
+故其 $H_n$ 是 $H^{\mathrm{top}-n}$；`cech_cohomology` 把順序反回來。）
+
+| 空間 | $|N_0|,|N_1|,|N_2|$ | $\chi$ | Betti (mod 2 / mod 3) | 整係數 $H^0,H^1,H^2$ |
+|---|---|---|---|---|
+| $S^1$（$6$ 點 $18$ 開） | $6,9,3$ | $0$ | $1,1,0$ | $\mathbb Z,\mathbb Z,0$ |
+| 區間（$3$ 點 $5$ 開） | $3,3,1$ | $1$ | $1,0,0$ | $\mathbb Z,0,0$ |
+
+$H^1(S^1)=\mathbb Z$ 無扭（`grp_factors` 為空）。
+
+**T8（分層）** 對有限空間上的層 $F$，以「莖之間的轉移映射是否為雙射」把點分層：
+$x\sim y\iff$ 存在可比點鏈，鏈上每段 $F_x\to F_y$ 皆為雙射。
+同層內轉移映射滿足**餘循環條件** $\sigma_{xy}=\sigma_{zy}\circ\sigma_{xz}$（$x\le z\le y$），
+故 $F$ 在每一層上是一個局部系統。驗證：
+
+| 層 | 分層 | 莖 |
+|---|---|---|
+| 局部常數層 $k^{\#\pi_0(V)}$（$k=2$） | $1$ 層（$6$ 點） | 處處 $2$ |
+| 可構造層 $k^{\#\pi_0(V\smallsetminus\{2\})}$ | $2$ 層，大小 $5$ 與 $1$ | 大層上 $2$，被刪除的點上 $4$ |
+
+跨層轉移（$2\to4$）**不是**雙射，故分出；層內全部轉移為雙射且餘循環成立。
+
+### 演算法
+
+| 函式 | 內容 | 代價 |
+|---|---|---|
+| `plus` | 對每個物件枚舉覆蓋上的相容族，再對芽取等價類 | $O(|\mathrm{Match}|^2\cdot|R|^2)$ |
+| `is_sheaf` / `is_separated` | 枚舉相容族並檢查黏合的存在與唯一性 | 同上 |
+| `sheafify = plus ∘ plus` | 兩次加構造 | 平方於上面的量 |
+| `germ_family` | 最小鄰域共尾 $\Rightarrow$ 莖 $=F(V_x)$ | $O(|u|\cdot|F(u)|)$ |
+| `sheafify_map` | 莖映射決定層化後態射（層由芽決定） | 線性 |
+| `cech_simplices` / `cech_coboundary` | $2^k$ 位元枚舉 + 面映射 | $O(2^k)$ |
+| `rank_mod` | Smith 標準形給 $\mathbb F_m$ 上的秩 | 多項式 |
+| `strata` | 併查集 + 逐對轉移雙射性 | $O(n^2)$ |
+
+---
+
 ## 檔案結構
 
 ```
@@ -238,6 +365,7 @@ src/trop/    熱帶半環、Kapranov 定理、熱帶矩陣、熱帶 Grassmannian
 src/derived/ 鏈複形、同調、映射錐、Künneth、Ext / Tor、UCT
 src/cat/     FinSet 範疇化、分次向量空間與 Gauss 二項式、K₀
 src/nis/     Nisnevich 拓撲（平展/完全分解、基變換、截面、下降）
+src/sheaf/   層：加構造/層化、莖、伴隨、左正合、Čech 上同調、分層
 ```
 
 ## 同構即相同：本專案的七個「規範形」
@@ -258,7 +386,7 @@ src/nis/     Nisnevich 拓撲（平展/完全分解、基變換、截面、下�
 
 | 項目 | 狀態 |
 |---|---|
-| `moon test` | **70 passed / 0 failed** |
+| `moon test` | **78 passed / 0 failed** |
 | `moon check` 警告數 | **0**（`moon clean` 後全量重建計數） |
 | 公開 API 中未被任何程式（含測試與展示程式）引用者 | 0 |
 | 跨套件重複實作 | 0（見下表） |
@@ -266,6 +394,15 @@ src/nis/     Nisnevich 拓撲（平展/完全分解、基變換、截面、下�
 已刪除的死碼：`teich.tok_bi`、`teich.word_same`、`derived.mat_sub`、`derived.total_rank`、
 `lat.dot_i`、`lat.lll_data`、`nf.poly_const`、`nf.poly_var`、`nis.rank_over`、`order.poset_make`
 （另含先前已清除的 `teich.inv_word` 與其唯一呼叫者消失後連帶的 `teich.tok_inv`）。
+
+本段修掉的真實缺陷：`nf.smith_normal_form` 在部分輸入上**無窮迴圈**
+（最小反例 $\begin{pmatrix}1&-1&0\\1&0&-1\\0&1&-1\end{pmatrix}$）。
+原因是清除主元的 $2\times2$ 單模變換（`row_combine`/`col_combine`）與欄清除互相抵消：
+當 $a_{kk}=1$ 時兩步互為逆操作，形成 $2$-循環。改為 **Euclid 歸約 + 換列**
+（$r_i\leftarrow r_i-\lfloor a_{ik}/a_{kk}\rfloor r_k$，餘數非零才換列）後，
+每次換列都使 $|a_{kk}|$ **嚴格遞減**，終止性可證；兩個 helper 隨之成為死碼並刪除。
+該缺陷位於既有 $70$ 個測試的路徑上（`src/derived` 與 `src/lat` 都會呼叫 SNF），
+只是被小輸入掩蓋。
 
 已合併的重複實作（每種演算法只保留一份）：
 

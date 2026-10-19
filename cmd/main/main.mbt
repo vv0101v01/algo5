@@ -160,6 +160,42 @@ fn main {
     "[nis]   a section picks, per point, a degree-1 lift     = \{show_ints(@nis.nisnevich_section(k, cov, mor))}",
   )
 
+
+  // ---- 11. 層 (sheaves: sheafification, stalks, Cech, strata) ------------
+  let nis_site = @sheaf.nis_split_site(3)
+  let cst = @sheaf.psh_constant(nis_site, 2)
+  let cst1 = @sheaf.plus(nis_site, cst)
+  let cst2 = @sheaf.plus(nis_site, cst1)
+  println(
+    "[sheaf] constant(2) ->+ -># on the Nisnevich site     = \{show_ints(cst.fibers)} -> \{show_ints(cst1.fibers)} -> \{show_ints(cst2.fibers)}",
+  )
+  println(
+    "[sheaf]   = locally constant sheaf on 3 points         = \{show_ints(@sheaf.locally_constant(nis_site, 2).fibers)}  (sheaf: \{@sheaf.is_sheaf(nis_site, cst2)}, F^+ sheaf: \{@sheaf.is_sheaf(nis_site, cst1)})",
+  )
+  // the finite model of the circle: 6 points, 18 opens
+  let circle = @sheaf.finite_space_site(6, @sheaf.triangle_opens())
+  let cover = circle.covers[17][0]
+  println(
+    "[sheaf] nerve of the circle: |N_0|,|N_1|,|N_2|        = \{@sheaf.cech_simplices(circle, cover, 0).length()}, \{@sheaf.cech_simplices(circle, cover, 1).length()}, \{@sheaf.cech_simplices(circle, cover, 2).length()}  (chi = 6-9+3 = 0)",
+  )
+  println(
+    "[sheaf]   Betti numbers mod 2 (b_0,b_1,b_2)            = \{@sheaf.cech_betti(circle, cover, 2, 0)}, \{@sheaf.cech_betti(circle, cover, 2, 1)}, \{@sheaf.cech_betti(circle, cover, 2, 2)}",
+  )
+  let hcir = @sheaf.cech_cohomology(circle, cover)
+  println(
+    "[sheaf]   integral H^n(S^1): ranks                     = \{@derived.grp_rank(hcir[0])}, \{@derived.grp_rank(hcir[1])}, \{@derived.grp_rank(hcir[2])}  (torsion in H^1: \{@derived.grp_factors(hcir[1]).length()} factors)",
+  )
+  // stratification by the stalk of a constructible sheaf
+  let cf = @sheaf.components_presheaf(circle, 2, [0, 1, 3, 4, 5], @sheaf.adjacency(circle, 6))
+  let st = @sheaf.strata(circle, cf, 6)
+  let stsz : Array[Int] = []
+  for i = 0; i < st.length(); i = i + 1 {
+    stsz.push(st[i].length())
+  }
+  println(
+    "[sheaf] strata of k^{pi_0(V - {pt})}: sizes            = \{show_ints(stsz)}  (stalks: 2 on the big stratum, \{cf.fibers[@sheaf.min_open_obj(circle, 2)]} at the removed point)",
+  )
+
   println("\n================================================================")
   println("  all statements above are re-verified by:  moon test")
   println("================================================================")

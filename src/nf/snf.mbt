@@ -178,74 +178,26 @@ pub fn snf_v(s : Snf) -> Array[Array[Int32]] {
 }
 
 ///|
-/// Row operation helpers (applied to `A` and, simultaneously, to `U`).
-fn row_combine(
-  a : Array[Array[Int32]],
-  u : Array[Array[Int32]],
-  i : Int32,
-  j : Int32,
-  s : Int32,
-  t : Int32,
-  p : Int32,
-  q : Int32,
-) -> Unit {
-  // row_i <- s*row_i + t*row_j ;  row_j <- p*row_i + q*row_j  (old values)
-  let ri = a[i].copy()
-  let rj = a[j].copy()
-  let ui = u[i].copy()
-  let uj = u[j].copy()
-  for k = 0; k < ri.length(); k = k + 1 {
-    a[i][k] = s * ri[k] + t * rj[k]
-    a[j][k] = p * ri[k] + q * rj[k]
-  }
-  for k = 0; k < ui.length(); k = k + 1 {
-    u[i][k] = s * ui[k] + t * uj[k]
-    u[j][k] = p * ui[k] + q * uj[k]
-  }
-}
-
-///|
-fn col_combine(
-  a : Array[Array[Int32]],
-  v : Array[Array[Int32]],
-  i : Int32,
-  j : Int32,
-  s : Int32,
-  t : Int32,
-  p : Int32,
-  q : Int32,
-) -> Unit {
-  let m = a.length()
-  let mut k = 0
-  while k < m {
-    let ci = a[k][i]
-    let cj = a[k][j]
-    a[k][i] = s * ci + t * cj
-    a[k][j] = p * ci + q * cj
-    k = k + 1
-  }
-  let n = v.length()
-  k = 0
-  while k < n {
-    let ci = v[k][i]
-    let cj = v[k][j]
-    v[k][i] = s * ci + t * cj
-    v[k][j] = p * ci + q * cj
-    k = k + 1
-  }
-}
-
-///|
 /// Smith normal form, with the unimodular transforms.
 ///
 /// The algorithm repeatedly
-///   (i)  moves the smallest non-zero entry of the active submatrix to the
-///        corner,
-///   (ii) clears the rest of its row and column by unimodular row/column
-///        operations built from the extended Euclidean algorithm,
-///   (iii) pulls in any entry not divisible by the corner and repeats.
-/// Termination is guaranteed because step (iii) strictly decreases
-/// |A[k][k]| (a well founded measure); see the test `snf_certificate`.
+///   (i)   moves the smallest non-zero entry of the active submatrix to the
+///         corner,
+///   (ii)  clears the column below and the row to the right of the corner by
+///         Euclidean reduction: `row_i -= (a[i][k] / a[k][k]) * row_k`
+///         followed by swapping rows k and i whenever the remainder is
+///         non-zero (and dually for columns),
+///   (iii) pulls in any entry not divisible by the corner (row_k += row_i)
+///         and goes back to (ii).
+/// Termination: the only operation that changes the corner is a swap, and a
+/// swap replaces a[k][k] by the remainder `a[i][k] mod a[k][k]`, whose
+/// absolute value is *strictly* smaller.  Hence only finitely many swaps
+/// occur and the loop terminates with the corner equal to the gcd of the
+/// active block.  (An earlier version cleared the corner with the 2x2
+/// unimodular matrix built from `ext_gcd`; that step and the column clearing
+/// can undo each other — with a[k][k] = 1 they cycle forever — so it is
+/// replaced by the Euclidean reduction above.)
+/// The certificate U·A·V = diag(d_i) is checked by the test `snf_certificate`.
 pub fn smith_normal_form(a0 : Array[Array[Int32]]) -> Snf {
   let m = a0.length()
   let n = if m == 0 { 0 } else { a0[0].length() }
@@ -283,62 +235,34 @@ pub fn smith_normal_form(a0 : Array[Array[Int32]]) -> Snf {
     if pj != k {
       swap_cols(a, v, k, pj)
     }
-    // (ii)+(iii)
-    let mut progress = true
-    while progress {
-      progress = false
-      let mut i = k + 1
-      while i < m {
-        if a[i][k] != 0 {
-          let (g, s, t) = ext_gcd(a[k][k], a[i][k])
-          let q1 = a[k][k] / g
-          let q2 = a[i][k] / g
-          row_combine(a, u, k, i, s, t, 0 - q2, q1)
-          progress = true
-        }
-        i = i + 1
+    // (ii)/(iii): Euclidean clearing alternated with the divisibility sweep
+    let mut dirty = true
+    let mut passes = 0
+    while dirty && passes < 4096 {
+      passes = passes + 1
+      dirty = false
+      if clear_col(a, u, k, m) {
+        dirty = true
       }
-      let mut j = k + 1
-      while j < n {
-        if a[k][j] != 0 {
-          let (g, s, t) = ext_gcd(a[k][k], a[k][j])
-          let q1 = a[k][k] / g
-          let q2 = a[k][j] / g
-          col_combine(a, v, k, j, s, t, 0 - q2, q1)
-          progress = true
-        }
-        j = j + 1
+      if clear_row(a, v, k, n) {
+        dirty = true
       }
-      // divisibility sweep
+      if dirty {
+        continue
+      }
+      // every remaining entry of the active block must be divisible by the
+      // corner; if not, pull that row in and clear again
       let mut i = k + 1
-      while i < m && !progress {
+      while i < m && !dirty {
         let mut j = k + 1
-        while j < n && !progress {
-          if a[i][j] != 0 {
-            if a[k][k] == 0 || a[i][j] % a[k][k] != 0 {
-              // add row i into row k, then re-clear
-              row_add(a, u, k, i)
-              progress = true
-            }
+        while j < n && !dirty {
+          if a[i][j] != 0 && (a[k][k] == 0 || a[i][j] % a[k][k] != 0) {
+            row_add(a, u, k, i)
+            dirty = true
           }
           j = j + 1
         }
         i = i + 1
-      }
-      // any residue left in row/column k also forces another pass
-      let mut i = k + 1
-      while i < m && !progress {
-        if a[i][k] != 0 {
-          progress = true
-        }
-        i = i + 1
-      }
-      let mut j = k + 1
-      while j < n && !progress {
-        if a[k][j] != 0 {
-          progress = true
-        }
-        j = j + 1
       }
     }
     if a[k][k] < 0 {
@@ -356,6 +280,106 @@ pub fn smith_normal_form(a0 : Array[Array[Int32]]) -> Snf {
     diag[i] = a[i][i]
   }
   { diag, u, v, }
+}
+
+///|
+/// Euclidean reduction of the entries a[i][k], i > k, to zero: each swap
+/// replaces the corner by the remainder, so |a[k][k]| strictly decreases.
+/// Returns true when the matrix changed.
+fn clear_col(
+  a : Array[Array[Int32]],
+  u : Array[Array[Int32]],
+  k : Int32,
+  m : Int32
+) -> Bool {
+  let mut did = false
+  let mut i = k + 1
+  while i < m {
+    let mut step = 0
+    while a[i][k] != 0 && step < 4096 {
+      step = step + 1
+      if a[k][k] == 0 {
+        swap_rows(a, u, k, i)
+        did = true
+        continue
+      }
+      let q = a[i][k] / a[k][k]
+      row_sub_mul(a, u, i, k, q)
+      if a[i][k] == 0 {
+        break
+      }
+      swap_rows(a, u, k, i)
+      did = true
+    }
+    i = i + 1
+  }
+  did
+}
+
+///|
+/// The dual Euclidean reduction of the entries a[k][j], j > k.
+fn clear_row(
+  a : Array[Array[Int32]],
+  v : Array[Array[Int32]],
+  k : Int32,
+  n : Int32
+) -> Bool {
+  let mut did = false
+  let mut j = k + 1
+  while j < n {
+    let mut step = 0
+    while a[k][j] != 0 && step < 4096 {
+      step = step + 1
+      if a[k][k] == 0 {
+        swap_cols(a, v, k, j)
+        did = true
+        continue
+      }
+      let q = a[k][j] / a[k][k]
+      col_sub_mul(a, v, j, k, q)
+      if a[k][j] == 0 {
+        break
+      }
+      swap_cols(a, v, k, j)
+      did = true
+    }
+    j = j + 1
+  }
+  did
+}
+
+///|
+/// row_i <- row_i - q * row_j (and the same on the left certificate).
+fn row_sub_mul(
+  a : Array[Array[Int32]],
+  u : Array[Array[Int32]],
+  i : Int32,
+  j : Int32,
+  q : Int32
+) -> Unit {
+  for c = 0; c < a[i].length(); c = c + 1 {
+    a[i][c] = a[i][c] - q * a[j][c]
+  }
+  for c = 0; c < u[i].length(); c = c + 1 {
+    u[i][c] = u[i][c] - q * u[j][c]
+  }
+}
+
+///|
+/// col_i <- col_i - q * col_j (and the same on the right certificate).
+fn col_sub_mul(
+  a : Array[Array[Int32]],
+  v : Array[Array[Int32]],
+  i : Int32,
+  j : Int32,
+  q : Int32
+) -> Unit {
+  for r = 0; r < a.length(); r = r + 1 {
+    a[r][i] = a[r][i] - q * a[r][j]
+  }
+  for r = 0; r < v.length(); r = r + 1 {
+    v[r][i] = v[r][i] - q * v[r][j]
+  }
 }
 
 ///|

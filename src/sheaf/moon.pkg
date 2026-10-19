@@ -1,0 +1,6 @@
+import {
+  "user/teichlab/src/nis" @nis,
+  "user/teichlab/src/tl" @tl,
+  "user/teichlab/src/nf" @nf,
+  "user/teichlab/src/derived" @derived,
+}

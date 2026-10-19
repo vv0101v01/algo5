@@ -9,7 +9,7 @@
 承載型別是無盒（unboxed）單欄位結構，release build 下摺疊成一條 `mov`：零成本抽象。
 
 ```
-moon test          # 70 passed, 0 failed
+moon test          # 78 passed, 0 failed
 moon run cmd/main  # 十一個套件各印出一條由演算法算出來的結論
 ```
 
@@ -36,6 +36,7 @@ moon version       # 本專案以 0.1.20261016 (1af328f 2026-10-16) 驗證
 | `src/derived` | 鏈複形、同調、映射錐、Künneth、Ext / Tor、泛係數定理 | 5 |
 | `src/cat` | FinSet 範疇化、分次向量空間與 Gauss 二項式、K₀ | 6 |
 | `src/nis` | 尼雲維奇拓撲：平展 / 完全分解、基變換、截面、下降 | 5 |
+| `src/sheaf` | 層：加構造 / 層化、莖、伴隨、左正合、Čech 上同調、分層 | 8 |
 
 ## 七個「規範形」
 
@@ -55,7 +56,7 @@ moon version       # 本專案以 0.1.20261016 (1af328f 2026-10-16) 驗證
 
 | 項目 | 狀態 |
 |---|---|
-| `moon test` | 70 passed / 0 failed |
+| `moon test` | 78 passed / 0 failed |
 | `moon clean && moon check` 警告數 | 0 |
 | 未被任何程式引用的公開 API | 0 |
 | 跨套件重複實作 | 0（`ipow` / `gcd` / 矩陣乘法 / 絕對值各只有一份） |
