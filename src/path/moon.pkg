@@ -1,0 +1,8 @@
+// Phantom type parameters (V[N] / Edge[A, B] / Path[A, B] / LPath[N, A, B]) never appear in the payload: they
+// exist only to carry a compile-time certificate.  The compiler cannot
+// see that, so the warning is switched off for this package.
+warnings = "-unused_type_variable"
+
+import {
+  "user/teichlab/src/tl",
+}

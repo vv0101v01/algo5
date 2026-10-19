@@ -1,0 +1,6 @@
+_build/
+target/
+*.wasm
+*.wat
+.DS_Store
+*.generated.mbti

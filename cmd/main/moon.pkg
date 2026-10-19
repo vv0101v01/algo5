@@ -1,0 +1,15 @@
+import {
+  "user/teichlab/src/tl",
+  "user/teichlab/src/nf",
+  "user/teichlab/src/order",
+  "user/teichlab/src/path",
+  "user/teichlab/src/lat",
+  "user/teichlab/src/teich",
+  "user/teichlab/src/valued",
+  "user/teichlab/src/trop",
+  "user/teichlab/src/derived",
+  "user/teichlab/src/cat",
+  "user/teichlab/src/nis",
+}
+
+pkgtype(kind: "executable")
